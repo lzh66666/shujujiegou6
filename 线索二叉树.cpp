@@ -1,120 +1,84 @@
 #include <iostream>
-#include <stdlib.h>
-#include <stdio.h>
+#include<stdlib.h>
 
-#define OK 1
-#define ERROR 0
-#define OVERFLOW -2
+typedef enum PointerTag{Link,Thread};
 
-typedef int Status;
-typedef char TElemType;
+typedef struct BTnode{
+    char data;
+    struct BTnode* lchild;
+    struct BTnode* rchild;
+    PointerTag ltag,rtag;
+}BTnod;
 
-typedef enum PointerTag{Link,Thread};	//Link==0:指针，Thread==1:线索 
-
-typedef struct BiThrNode{
-	TElemType data;
-	struct BiThrNode *lchild,*rchild;
-	PointerTag LTag,RTag;				//左右标志 
-}BiThrNode,*BiThrTree;
-
-Status CreateBiTree(BiThrTree &T){		//按先序次序输入二叉树中节点的值（一个字符），空格字符表示空树 
-	//构造二叉链表表示的二叉树T
-	char ch;
-	scanf("%c",&ch);
-	if(ch=='#')
-		T=NULL;
+void createBTree(BTnode *&T){//创建二叉树 
+    char ch;
+    scanf("%c",&ch);
+    if(ch=='#'){
+        T=NULL;
+    }
 	else{
-		T=(BiThrTree)malloc(sizeof(BiThrNode));
-		if(!T)
-			exit(OVERFLOW);
-		T->data=ch;		//生成根节点
-		CreateBiTree(T->lchild);	//构造左子树 
-		CreateBiTree(T->rchild); 	//构造右子树 
-	}
-	return OK; 
+        T=(BTnode *)malloc(sizeof(BTnode));
+        T->data=ch;
+        T->ltag=Link;
+        T->rtag=Link;
+        createBTree(T->lchild);
+        createBTree(T->rchild);
+    }
 }
 
+void inThread(BTnode *&T,BTnode *&pre){//中序遍历线索化二叉树 
+    if(T!=NULL){
+        inThread(T->lchild,pre);
+        if(T->lchild==NULL){
+            T->lchild=pre;
+            T->ltag=Thread;
+        }
+        if(pre!=NULL&&pre->rchild==NULL){
+            pre->rchild=T;
+            pre->rtag=Thread;
+        }
+        pre=T;
+        inThread(T->rchild,pre);
+    } 
+} 
 
-
-void InThreading(BiThrTree &pre,BiThrTree &p){
-	if(p){
-		InThreading(pre,p->lchild);		//左子树线索化
-		if(!p->lchild){				//前驱线索 
-			p->LTag=Thread;
-			p->lchild=pre;
-		} 
-		else
-		{
-			p->LTag=Link;
-		}
-		if(!pre->rchild){			//后继线索 
-			pre->RTag=Thread;
-			pre->rchild=p;
-		}
-		else
-		{
-			p->RTag=Link;
-		}
-		pre=p;					//保持pre指向p的前驱 
-		InThreading(pre,p->rchild);		//右子树线索化 
-	}
+void createInThread(BTnode *T){//创建中序线索二叉树 
+    BTnode *pre;
+    pre=NULL;
+    if(T!=NULL){
+        inThread(T,pre);
+        pre->rchild=NULL;
+        pre->rtag=Thread;//处理最后一个结点信息 
+    }
 }
 
-Status InOrderThreading(BiThrTree &Thrt,BiThrTree &T){
-	//中序遍历二叉树T,并将其中序线索化,Thrt指向头结点 
-	BiThrTree pre;
-	if(!(Thrt=(BiThrTree)malloc(sizeof(BiThrNode))))
-		exit(OVERFLOW);
-		
-	Thrt->LTag=Link;			//建头结点 
-	Thrt->RTag = Thread;
-	Thrt->rchild=Thrt;			//右指针回指
-	
-	if(!T)
-		Thrt->lchild=Thrt;		//若二叉树空，则左指针回指
-	else{
-		Thrt->lchild=T;
-		pre=Thrt;
-		InThreading(pre,T);		//中序遍历进行中序线索化 
-		pre->rchild=Thrt;		//最后一个节点线索化 
-		pre->RTag=Thread;
-		Thrt->rchild=pre;
-		Thrt->RTag = Thread;
-	} 
-	return OK;
+BTnode* firstNode(BTnode *p){//获取中序序列的第一个结点 
+    while(p->ltag==Link){//若有左孩子 
+        p=p->lchild;
+    }
+    return p;
+} 
+
+BTnode* nextNode(BTnode *p){//获得中序序列下T结点的后继结点 
+    if(p->rtag==Link){//若有右孩子 
+        return firstNode(p->rchild);
+    }else{
+        return p->rchild;
+    }
 }
 
-Status InOrderTraverse_Thr(BiThrTree T){
-	//T指向头结点,头结点的左链lchild指向根结点
-	//中序遍历线索二叉树T的非递归算法 
-	BiThrTree p;
-	p=T->lchild;	//p指向根结点 
-	while(p != T){	//空树或遍历结束时,P == T 
-		while(p->LTag == Link)
-			p=p->lchild;
-		if(p->data)
-			printf("%c",p->data);
-		else		//访问其左子树为空的结点 
-			return ERROR;
-		while(p->RTag == Thread && p->rchild!=T)	//访问后继结点 
-		{
-			p=p->rchild;
-			printf("%c",p->data);
-		}
-		p=p->rchild;
-	}
-	return OK;
-}
- 
+void inOrderThread(BTnode *T){//遍历中序线索二叉树
+     BTnode *p;
+    for(p=firstNode(T);p!=NULL;p=nextNode(p)){
+        printf("%c ",p->data);
+    }
+} 
+
 int main(int argc, char** argv) {
-	BiThrTree T;
-	printf("请按先序遍历输入二叉树：\n");
-	CreateBiTree(T);
-	
-	BiThrTree Thrt;
-	InOrderThreading(Thrt,T);
-	printf("线索二叉树中序遍历结果为:\n"); 
-	InOrderTraverse_Thr(Thrt);
-	
-	return 0;
+    BTnode *T,*p;
+    createBTree(T);//创建二叉树 
+    createInThread(T);//创建中序线索二叉树 
+    inOrderThread(T);//遍历中序线索二叉树 
+    return 0;
 }
+
